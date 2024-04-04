@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.optimize import curve_fit
+import torch
+from tqdm import tqdm
 
 def read_data(file_dir, fname, i):
     
@@ -67,8 +69,8 @@ def funcBiExp(b, f, Dt, Ds):
     ## Units
     # b: s/mm^2
     # D: mm^2/s
-    return (1.-f) * np.exp(-1.*Dt * b) + f * np.exp(-1.*Ds * b)
-
+    return (1.-f) * np.exp(-1.*Dt * (b/1000)) + f * np.exp(-1.*Ds * (b/1000))
+ 
 def fit_biExponential_model(arr3D_img, arr1D_b):
     
 
@@ -91,3 +93,53 @@ def fit_biExponential_model(arr3D_img, arr1D_b):
         arr2D_DsFitted[arr1D_coord[0], arr1D_coord[1]] = popt[2]
 
     return np.concatenate((arr2D_fFitted[:,:,np.newaxis],arr2D_DtFitted[:,:,np.newaxis],arr2D_DsFitted[:,:,np.newaxis]), axis=2)
+
+
+
+def fit_biExponential_model_signal(signal, b):
+    
+    numcols, acquisitions = signal.shape
+    f = np.zeros((numcols,))
+    D = np.zeros((numcols,))
+    D_star = np.zeros((numcols,))
+    for col in tqdm(range(numcols)):
+        xdata = b
+        ydata = signal[col]/signal[col,0]
+        try:
+            popt, pcov = curve_fit(funcBiExp, xdata, ydata
+                                , p0=(0.15, 1.5, 8), bounds=([0, 0, 3.0], [1, 2.9, np.inf]), method='trf')
+
+        except:
+            popt = [0, 0, 0]
+            print('fail to be fitted, set all parameters as 0')
+
+        f[col] = popt[0]
+        D[col] = popt[1]
+        D_star[col] = popt[2]
+
+    return f, D, D_star
+
+    
+
+
+
+def get_batch(batch_size=16, noise_sdt=0.01):
+
+    b_values = [0, 5, 50, 100, 200, 500, 800, 1000]
+
+    
+    D = np.random.uniform(0., 3., batch_size)
+    D_star = np.random.uniform(3.0, 60., batch_size)    
+    f = np.random.uniform(0, 1, batch_size)
+    
+    signal = np.zeros((batch_size, len(b_values)), dtype=float)
+    for sample in range(batch_size):
+        for ctr, b in enumerate(b_values):
+            signal[sample, ctr] = (1 - f[sample])*np.exp(-(b/1000)*D[sample]) + f[sample]*np.exp(-(b/1000)*D_star[sample])
+
+
+    noise_im = np.random.normal(0, noise_sdt, signal.shape)
+    noise_re = np.random.normal(0, noise_sdt, signal.shape)
+    noisy = np.sqrt((signal + noise_im)**2 + (signal + noise_re)**2)/np.sqrt(2)
+
+    return torch.from_numpy(noisy).float(), torch.from_numpy(D.T).float(), torch.from_numpy(D_star.T).float(), torch.from_numpy(f.T).float(), torch.from_numpy(signal).float()

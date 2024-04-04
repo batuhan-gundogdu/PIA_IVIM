@@ -1,5 +1,5 @@
 import numpy as np
-from utils import *
+from utils import fit_biExponential_model, read_data, rRMSE_per_case
 from concurrent.futures import ProcessPoolExecutor
 import os
 
