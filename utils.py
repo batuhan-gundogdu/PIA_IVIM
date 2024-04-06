@@ -142,4 +142,4 @@ def get_batch(batch_size=16, noise_sdt=0.01):
     noise_re = np.random.normal(0, noise_sdt, signal.shape)
     noisy = np.sqrt((signal + noise_im)**2 + (signal + noise_re)**2)/np.sqrt(2)
 
-    return torch.from_numpy(noisy).float(), torch.from_numpy(D.T).float(), torch.from_numpy(D_star.T).float(), torch.from_numpy(f.T).float(), torch.from_numpy(signal).float()
+    return torch.from_numpy(noisy).float(), torch.from_numpy(f.T).float(), torch.from_numpy(D.T).float(), torch.from_numpy(D_star.T).float(),  torch.from_numpy(signal).float()
