@@ -66,7 +66,7 @@ for ep in range(number_of_epochs):
             noisy = np.abs(np.fft.ifft2(k, axes=(0,1) ,norm='ortho'))
             samples = noisy.reshape(-1,8)
             samples = torch.from_numpy(samples/samples[:, 0, np.newaxis]).to(device).float()
-            f, D, D_star  = model.module.encode(signal) if isinstance(model, torch.nn.DataParallel) else model.encode(signal)
+            f, D, D_star  = model.module.encode(samples) if isinstance(model, torch.nn.DataParallel) else model.encode(samples)
             f = f.detach().cpu().numpy().reshape(200,200)
             D = D.detach().cpu().numpy().reshape(200,200)/1000
             D_star = D_star.detach().cpu().numpy().reshape(200,200)/1000
