@@ -69,7 +69,7 @@ def funcBiExp(b, f, Dt, Ds):
     ## Units
     # b: s/mm^2
     # D: mm^2/s
-    return (1.-f) * np.exp(-1.*Dt * (b/1000)) + f * np.exp(-1.*Ds * (b/1000))
+    return (1.-f) * np.exp(-1.*Dt * b) + f * np.exp(-1.*Ds * b)
  
 def fit_biExponential_model(arr3D_img, arr1D_b):
     
