@@ -128,18 +128,54 @@ def get_batch(batch_size=16, noise_sdt=0.01):
     b_values = [0, 5, 50, 100, 200, 500, 800, 1000]
 
     
-    D = np.random.uniform(0., 3., batch_size)
-    D_star = np.random.uniform(3.0, 60., batch_size)    
-    f = np.random.uniform(0, 1, batch_size)
+    Dt = np.random.uniform(0.0005, 0.0015, batch_size)# You can change the ınterval of D
+    D_star = np.random.uniform(0.005, 0.06, batch_size)    # You can change the ınterval of D_star
+    f = np.random.uniform(0.01, 0.4, batch_size) # You can change the ınterval of f
     
     signal = np.zeros((batch_size, len(b_values)), dtype=float)
     for sample in range(batch_size):
         for ctr, b in enumerate(b_values):
-            signal[sample, ctr] = (1 - f[sample])*np.exp(-(b/1000)*D[sample]) + f[sample]*np.exp(-(b/1000)*D_star[sample])
+            signal[sample, ctr] = (1 - f[sample])*np.exp(-(b/1000)*Dt[sample]) + f[sample]*np.exp(-(b/1000)*D_star[sample])
 
 
     noise_im = np.random.normal(0, noise_sdt, signal.shape)
     noise_re = np.random.normal(0, noise_sdt, signal.shape)
     noisy = np.sqrt((signal + noise_im)**2 + (signal + noise_re)**2)/np.sqrt(2)
 
-    return torch.from_numpy(noisy).float(), torch.from_numpy(f.T).float(), torch.from_numpy(D.T).float(), torch.from_numpy(D_star.T).float(),  torch.from_numpy(signal).float()
+    return torch.from_numpy(noisy).float(), torch.from_numpy(f.T).float(), torch.from_numpy(Dt.T).float(), torch.from_numpy(D_star.T).float(),  torch.from_numpy(signal).float()
+
+
+def ivim_fit_func(b, f, Dt, Dstar):
+    b = b / 1000.0
+    return (1 - f) * np.exp(-b * Dt) + f * np.exp(-b * Dstar)
+
+
+
+
+def hybrid_fit(signals, bvals=[0, 5, 50, 100, 200, 500, 800, 1000]):
+    eps = 1e-5
+    numcols, acquisitions = signals.shape
+    f = np.zeros((numcols,))
+    Dt = np.zeros((numcols,))
+    Dstar = np.zeros((numcols,))
+    for col in range(numcols):
+        voxel = signals[col]
+        xdata = np.array(bvals)
+        ydata = voxel.ravel()
+        try:
+            fitdata_, _ = curve_fit(
+                ivim_fit_func,
+                xdata,
+                ydata,
+                p0=[0.15,1.5e-3,8e-3], # You can change initial values of per parameter
+                bounds=([0, 0, 3.0e-3], [1, 2.9e-3, np.inf]), # You can change bounds of per parameter
+                method='trf',
+                maxfev=5000
+            )
+        except RuntimeError:
+            fitdata_ = [0.15,1.5e-3,8e-3] # Fit data = p0
+        coeffs = fitdata_
+        f[col] = coeffs[0]
+        Dt[col] = coeffs[1]
+        Dstar[col] = coeffs[2]
+    return f, Dt, Dstar
